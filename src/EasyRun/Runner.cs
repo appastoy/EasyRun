@@ -71,7 +71,7 @@ namespace EasyRun
         {
             if (_lastRunnerTypeDescriptor == null)
                 throw new InvalidOperationException("You should call Add() or AddAsync() method before call WithParamFactory() method.");
-            _lastRunnerTypeDescriptor.AddParam(name, factory);
+            _lastRunnerTypeDescriptor.AddParamFactory(name, factory);
             return this;
         }
 
