@@ -42,9 +42,10 @@ namespace EasyRun.Resolvers
                 TryResolveAsEnumerable(out value);
         }
 
-        public void Inject<T>(T value)
+        public IObjectResolver Inject<T>(T value)
         {
             InjectDelegateCache.Acquire<T>().Invoke(this, value);
+            return this;
         }
 
         bool TryResolveInternal<T>(out T value)

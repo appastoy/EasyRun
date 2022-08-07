@@ -4,6 +4,6 @@
     {
         T Resolve<T>();
         bool TryResolve<T>(out T value);
-        void Inject<T>(T value);
+        IObjectResolver Inject<T>(T value);
     }
 }

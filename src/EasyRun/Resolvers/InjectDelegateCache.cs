@@ -109,8 +109,9 @@ namespace EasyRun.Resolvers
                     var localVar = Expression.Variable(f.FieldType);
                     var tryResolve = Expression.IfThen(
                         Expression.Call(
-                            resolverParam,
-                            s_tryResolve.MakeGenericMethod(f.FieldType))
+                            resolverParam
+                            , s_tryResolve.MakeGenericMethod(f.FieldType)
+                            , localVar)
                         , Expression.Assign(Expression.Field(valueParam, f), localVar));
                     return Expression.Block(Enumerable.Repeat(localVar, 1), Enumerable.Repeat(tryResolve, 1));
                 });
@@ -131,8 +132,9 @@ namespace EasyRun.Resolvers
                 var localVar = Expression.Variable(p.PropertyType);
                 var tryResolve = Expression.IfThen(
                     Expression.Call(
-                        resolverParam,
-                        s_tryResolve.MakeGenericMethod(p.PropertyType))
+                        resolverParam
+                        , s_tryResolve.MakeGenericMethod(p.PropertyType)
+                        , localVar)
                     , Expression.Assign(Expression.Property(valueParam, p), localVar));
                 return Expression.Block(Enumerable.Repeat(localVar, 1), Enumerable.Repeat(tryResolve, 1));
             });
