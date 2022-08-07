@@ -64,7 +64,7 @@ namespace EasyRun.Resolvers
             var currentResolver = this;
             while (currentResolver != null)
             {
-                if (!currentResolver._objectBuilderMap.TryGetValue(typeof(T), out var list) &&
+                if (currentResolver._objectBuilderMap.TryGetValue(typeof(T), out var list) &&
                     list[0] is IObjectBuilder<T> builder)
                     return builder;
                 currentResolver = currentResolver._parentResolver;

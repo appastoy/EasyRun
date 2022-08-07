@@ -50,9 +50,10 @@ namespace EasyRun.Helpers
             var paramDescMapParam = Expression.Parameter(typeof(IReadOnlyDictionary<string, IParameterDescriptor>));
             var body = CreateBody(typeDescriptor, resolverParam, paramDescMapParam);
             return Expression.Lambda<FactoryDelegate<TInterface>>(
-                                body,
-                                Enumerable.Repeat(resolverParam, 1))
-                                .Compile();
+                    body,
+                    resolverParam,
+                    paramDescMapParam)
+                .Compile();
         }
 
         static Expression CreateBody(
@@ -79,8 +80,18 @@ namespace EasyRun.Helpers
             return Expression.Call(s_resolveParameter.MakeGenericMethod(param.ParameterType),
                 resolverParam,
                 paramDescMapParam,
-                Expression.Constant(param, typeof(ParameterInfo)));
+                Expression.Constant(param.Name, typeof(string)));
         }
+
+        static T ResolveParameter<T>(ObjectResolver resolver, IReadOnlyDictionary<string, IParameterDescriptor> paramDescMap, string paramName)
+        {
+            return paramDescMap?.Count > 0 &&
+                paramDescMap.TryGetValue(paramName, out var paramDesc) &&
+                paramDesc is IParameterDescriptor<T> valueParam ?
+                    valueParam.Value :
+                    resolver.Resolve<T>();
+        }
+
         static Expression CreateBodyWithOptionalParameter(ITypeDescriptor typeDescriptor, ParameterExpression resolverParam, ParameterExpression paramDescMapParam)
         {
             var localVariables = CreateLocalVariables(typeDescriptor.Parameters);
@@ -128,6 +139,22 @@ namespace EasyRun.Helpers
                 Expression.Assign(localVariable, Expression.Constant(param.DefaultValue, param.ParameterType)));
         }
 
+        static bool TryResolveParameter<T>(
+                ObjectResolver resolver
+                , IReadOnlyDictionary<string, IParameterDescriptor> paramDescMap
+                , string paramName
+                , out T result)
+        {
+            if (paramDescMap?.Count > 0 &&
+                paramDescMap.TryGetValue(paramName, out var paramDesc) &&
+                paramDesc is IParameterDescriptor<T> valueParam)
+            {
+                result = valueParam.Value;
+                return true;
+            }
+            return resolver.TryResolve(out result);
+        }
+
         static NewExpression CreateNewExpression(
             ITypeDescriptor typeDescriptor,
             IEnumerable<ParameterExpression> localVariables,
@@ -140,31 +167,6 @@ namespace EasyRun.Helpers
                 .Concat(localVariables);
 
             return Expression.New(typeDescriptor.Constructor, arguments, typeDescriptor.Parameters.Select(p => p.Member));
-        }
-
-        static T ResolveParameter<T>(ObjectResolver resolver, IReadOnlyDictionary<string, IParameterDescriptor> paramDescMap, ParameterInfo paramInfo)
-        {
-            return paramDescMap.Count > 0 &&
-                paramDescMap.TryGetValue(paramInfo.Name, out var paramDesc) &&
-                paramDesc is IParameterDescriptor<T> valueParam ?
-                    valueParam.Value :
-                    resolver.Resolve<T>();
-        }
-
-        static bool TryResolveParameter<T>(
-                ObjectResolver resolver
-                , IReadOnlyDictionary<string, IParameterDescriptor> paramDescMap
-                , string paramName
-                , out T result)
-        {
-            if (paramDescMap.Count > 0 &&
-                paramDescMap.TryGetValue(paramName, out var paramDesc) &&
-                paramDesc is IParameterDescriptor<T> valueParam)
-            {
-                result = valueParam.Value;
-                return true;
-            }
-            return resolver.TryResolve(out result);
-        }
+        }        
     }
 }

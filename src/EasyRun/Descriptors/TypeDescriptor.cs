@@ -1,5 +1,4 @@
 ﻿using EasyRun.Builders;
-using EasyRun.Registrations;
 using EasyRun.Helpers;
 using System;
 using System.Collections.Generic;
@@ -34,7 +33,11 @@ namespace EasyRun.Descriptors
             s_parameters = s_constructor.GetParameters();
         }
 
-        readonly Dictionary<string, IParameterDescriptor> _paramDescMap;
+        Dictionary<string, IParameterDescriptor> _paramDescMap;
+        Dictionary<string, IParameterDescriptor> ParamDescMap
+        {
+            get => _paramDescMap ?? (_paramDescMap = new Dictionary<string, IParameterDescriptor>());
+        }
 
         public Type Type => typeof(T);
         public LifeTime LifeTime { get; }
@@ -44,14 +47,14 @@ namespace EasyRun.Descriptors
 
         public void AddParam<TParam>(string name, TParam value)
         {
-            ValidateParam<TParam>(name);
-            _paramDescMap.Add(name, new ParameterValueDescriptor<TParam>(name, value));
+            ValidateParam<TParam>(name, nameof(RunnerBuilder.WithParam));
+            ParamDescMap.Add(name, new ParameterValueDescriptor<TParam>(name, value));
         }
 
         public void AddParamFactory<TParam>(string name, Func<TParam> factory)
         {
-            ValidateParam<TParam>(name);
-            _paramDescMap.Add(name, new ParameterFactoryDescriptor<TParam>(name, factory));
+            ValidateParam<TParam>(name, nameof(RunnerBuilder.WithParamFactory));
+            ParamDescMap.Add(name, new ParameterFactoryDescriptor<TParam>(name, factory));
         }
 
         public IObjectBuilder CreateBuilder() => CreateBuilderInternal();
@@ -64,15 +67,15 @@ namespace EasyRun.Descriptors
                 new ScopedBuilder<TInterface>(factory, _paramDescMap);
         }
 
-        void ValidateParam<TParam>(string name)
+        void ValidateParam<TParam>(string name, string methodName)
         {
-            if (_paramDescMap.ContainsKey(name))
+            if (_paramDescMap?.ContainsKey(name) ?? false)
                 throw new ArgumentException($"\"{name}\" parameter of {Type.Name} constructor already added. You can register each parameter only once using WithParam().");
             var param = s_parameters.FirstOrDefault(p => p.Name == name);
             if (param == null)
                 throw new ArgumentException($"\"{name}\" parameter is not exists in {Type.Name} constructor.");
             if (!param.ParameterType.IsAssignableFrom(typeof(TParam)))
-                throw new ArgumentException($"\"{name}\" parameter of {Type.Name} constructor value type is mismatch. (parameterType: {param.ParameterType.Name}, WithParam().valueType: {typeof(TParam).Name})");
+                throw new ArgumentException($"\"{name}\" parameter of {Type.Name} constructor value type is mismatch. (parameterType: {param.ParameterType.Name}, {methodName}().valueType: {typeof(TParam).Name})");
         }
     }
 }
