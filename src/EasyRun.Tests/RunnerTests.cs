@@ -73,30 +73,53 @@ public class RunnerTests
     public void WithParam()
     {
         var addedValue = 0;
-        var sut = CreateRunner(builder => builder
-            .Register<Action<int>>(value => addedValue = value));
+        new Action(() => CreateSUT().WithParam("", 0)).Should().Throw<InvalidOperationException>();
+        new Action(() => CreateSUT().Add<TestRunnerWithParam>()
+                                    .WithParam("unkownValue", 0))
+            .Should().Throw<ArgumentException>();
+        new Action(() => CreateSUT().Add<TestRunnerWithParam>()
+                                    .WithParam("intValue", 1)
+                                    .WithParam("intValue", 2))
+            .Should().Throw<ArgumentException>();
 
-        sut.Add<TestRunnerWithParam>().WithParam("intParam", 80).Run();
+        CreateSUT().Add<TestRunnerWithParam>().WithParam("intParam", 80).Run();
 
         addedValue.Should().Be(80);
+
+        Runner CreateSUT()
+        {
+            return CreateRunner(builder => builder
+                .Register<Action<int>>(value => addedValue = value));
+        }
     }
 
     [Fact]
     public async Task WithParamFactory()
     {
         var addedValue = 0;
-        var sut = CreateRunner(builder => builder
-            .Register<Func<int, CancellationToken, Task>>((value, _) =>
-            {
-                addedValue = value;
-                return Task.CompletedTask;
-            }));
-
-        await sut.AddAsync<TestAsyncRunnerWithParam>()
+        new Action(() => CreateSUT().WithParamFactory("", () => 0)).Should().Throw<InvalidOperationException>();
+        new Action(() => CreateSUT().AddAsync<TestAsyncRunnerWithParam>()
+                                    .WithParamFactory("unkownValue", () => 0))
+            .Should().Throw<ArgumentException>();
+        new Action(() => CreateSUT().AddAsync<TestAsyncRunnerWithParam>()
+                                    .WithParamFactory("intValue", () => 1)
+                                    .WithParamFactory("intValue", () => 2))
+            .Should().Throw<ArgumentException>();
+        await CreateSUT().AddAsync<TestAsyncRunnerWithParam>()
             .WithParamFactory("intParam", () => 800)
             .RunAsync();
 
         addedValue.Should().Be(800);
+
+        Runner CreateSUT()
+        {
+            return CreateRunner(builder => builder
+                .Register<Func<int, CancellationToken, Task>>((value, _) =>
+                {
+                    addedValue = value;
+                    return Task.CompletedTask;
+                }));
+        }
     }
 
     Runner CreateRunner(Action<RunnerBuilder> action = null)

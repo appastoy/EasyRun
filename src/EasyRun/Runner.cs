@@ -15,15 +15,15 @@ namespace EasyRun
         public static RunnerBuilder CreateBuilder() => new RunnerBuilder(null);
 
         public static void StaticRun(
-            Action<IDependencyRegistration> registerAction,
-            Action<IRunnerRegistration> addRunnerAction)
-            => CreateStaticRunner(registerAction, addRunnerAction).Run();
+            Action<IDependencyRegistration> builderAction,
+            Action<IRunnerRegistration> runnerAction)
+            => CreateStaticRunner(builderAction, runnerAction).Run();
 
-        public Task StaticRunAsync(
-            Action<IDependencyRegistration> registerAction,
-            Action<IRunnerRegistration> addRunnerAction,
+        public static Task StaticRunAsync(
+            Action<IDependencyRegistration> builderAction,
+            Action<IRunnerRegistration> runnerAction,
             CancellationToken cancellationToken = default)
-            => CreateStaticRunner(registerAction, addRunnerAction).RunAsync(cancellationToken);
+            => CreateStaticRunner(builderAction, runnerAction).RunAsync(cancellationToken);
 
         readonly ObjectResolver _resolver;
         readonly List<RunnerInfo> _runnerInfos = new List<RunnerInfo>();
@@ -84,17 +84,17 @@ namespace EasyRun
                 throw task.Exception;
         }
 
-        public void Run<TRunner>(Action<IObjectCreationOption> addParamAction = null)
+        public void RunDirect<TRunner>(Action<IObjectCreationOption> option = null)
             where TRunner : IRunner
-            => CreateRunnerInstance<TRunner>(addParamAction).Run();
+            => CreateRunnerInstance<TRunner>(option).Run();
 
-        public void Run(Action<IRunnerRegistration> addRunnerAction)
-            => CreateCloneRunner(addRunnerAction).Run();
+        public void RunTemp(Action<IRunnerRegistration> runnerAction)
+            => CreateCloneRunner(runnerAction).Run();
 
-        public void Run(
-            Action<IDependencyRegistration> subRegisterAction,
-            Action<IRunnerRegistration> addRunnerAction)
-            => CreateSubRunner(subRegisterAction, addRunnerAction).Run();
+        public void RunSub(
+            Action<IDependencyRegistration> builderAction,
+            Action<IRunnerRegistration> runnerAction)
+            => CreateSubRunner(builderAction, runnerAction).Run();
 
         public Task RunAsync(CancellationToken cancellationToken = default)
         {
@@ -103,20 +103,22 @@ namespace EasyRun
             return task;
         }
 
-        public Task RunAsync<TAsyncRunner>(
-            Action<IObjectCreationOption> addParamAction = null,
+        public Task RunDirectAsync<TAsyncRunner>(
+            Action<IObjectCreationOption> option = null,
             CancellationToken cancellationToken = default)
                 where TAsyncRunner : IAsyncRunner
-            => CreateRunnerInstance<TAsyncRunner>(addParamAction).RunAsync(cancellationToken);
+            => CreateRunnerInstance<TAsyncRunner>(option).RunAsync(cancellationToken);
 
-        public Task RunAsync(Action<IRunnerRegistration> addRunnerAction, CancellationToken cancellationToken = default)
-            => CreateCloneRunner(addRunnerAction).RunAsync(cancellationToken);
-
-        public Task RunAsync(
-            Action<IDependencyRegistration> subRegisterAction,
-            Action<IRunnerRegistration> addRunnerAction,
+        public Task RunTempAsync(
+            Action<IRunnerRegistration> runnerAction, 
             CancellationToken cancellationToken = default)
-            => CreateSubRunner(subRegisterAction, addRunnerAction).RunAsync(cancellationToken);
+            => CreateCloneRunner(runnerAction).RunAsync(cancellationToken);
+
+        public Task RunSubAsync(
+            Action<IDependencyRegistration> builderAction,
+            Action<IRunnerRegistration> runnerAction,
+            CancellationToken cancellationToken = default)
+            => CreateSubRunner(builderAction, runnerAction).RunAsync(cancellationToken);
 
         public void Dispose() => _resolver.Dispose();
 
@@ -147,46 +149,46 @@ namespace EasyRun
             return this;
         }
 
-        TRunner CreateRunnerInstance<TRunner>(Action<IObjectCreationOption> addParamAction)
+        TRunner CreateRunnerInstance<TRunner>(Action<IObjectCreationOption> option)
         {
             var descriptor = new TypeDescriptor<TRunner, TRunner>(LifeTime.Transient);
-            addParamAction?.Invoke(descriptor);
+            option?.Invoke(descriptor);
             return descriptor.CreateBuilderInternal().Build(_resolver);
         }
 
         private static Runner CreateStaticRunner(
-            Action<IDependencyRegistration> registerAction,
-            Action<IRunnerRegistration> addRunnerAction)
+            Action<IDependencyRegistration> builderAction,
+            Action<IRunnerRegistration> runnerAction)
         {
-            if (registerAction == null)
-                throw new ArgumentNullException(nameof(registerAction));
-            if (addRunnerAction == null)
-                throw new ArgumentNullException(nameof(addRunnerAction));
+            if (builderAction == null)
+                throw new ArgumentNullException(nameof(builderAction));
+            if (runnerAction == null)
+                throw new ArgumentNullException(nameof(runnerAction));
             var builder = CreateBuilder();
-            registerAction.Invoke(builder);
+            builderAction.Invoke(builder);
             var container = builder.Build();
-            addRunnerAction.Invoke(container);
+            runnerAction.Invoke(container);
             return container;
         }
 
-        private Runner CreateCloneRunner(Action<IRunnerRegistration> addRunnerAction)
+        private Runner CreateCloneRunner(Action<IRunnerRegistration> runnerAction)
         {
-            if (addRunnerAction == null)
-                throw new ArgumentNullException(nameof(addRunnerAction));
+            if (runnerAction == null)
+                throw new ArgumentNullException(nameof(runnerAction));
             var cloneContainer = Clone();
-            addRunnerAction.Invoke(cloneContainer);
+            runnerAction.Invoke(cloneContainer);
             return cloneContainer;
         }
 
         private Runner CreateSubRunner(
-            Action<IDependencyRegistration> registerAction,
-            Action<IRunnerRegistration> addRunnerAction)
+            Action<IDependencyRegistration> builderAction,
+            Action<IRunnerRegistration> runnerAction)
         {
-            if (addRunnerAction == null)
-                throw new ArgumentNullException(nameof(addRunnerAction));
+            if (runnerAction == null)
+                throw new ArgumentNullException(nameof(runnerAction));
 
-            var container = CreateSubRunner(registerAction);
-            addRunnerAction.Invoke(container);
+            var container = CreateSubRunner(builderAction);
+            runnerAction.Invoke(container);
             return container;
         }
 

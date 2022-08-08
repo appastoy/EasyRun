@@ -106,7 +106,8 @@ namespace EasyRun.Helpers
         {
             return parameters
                 .Where(p => p.HasDefaultValue)
-                .Select(p => Expression.Variable(p.ParameterType, p.Name));
+                .Select(p => Expression.Variable(p.ParameterType, p.Name))
+                .ToArray();
         }
 
         static IEnumerable<Expression> EnsureOptionalParameterExpressions(
@@ -166,7 +167,7 @@ namespace EasyRun.Helpers
                 .Select(p => ResolveParameter(resolverParam, paramDescMapParam, p))
                 .Concat(localVariables);
 
-            return Expression.New(typeDescriptor.Constructor, arguments, typeDescriptor.Parameters.Select(p => p.Member));
+            return Expression.New(typeDescriptor.Constructor, arguments);
         }        
     }
 }
